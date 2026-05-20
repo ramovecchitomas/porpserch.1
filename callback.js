@@ -1,9 +1,7 @@
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   const code  = req.query.code  || '';
   const error = req.query.error || '';
 
-  // Esta página la abre ML después del login.
-  // Pasa el código a la app.html via localStorage y se cierra sola.
   res.setHeader('Content-Type', 'text/html');
   res.send(`<!DOCTYPE html>
 <html>
@@ -16,23 +14,25 @@ export default function handler(req, res) {
              border-top-color: #f0e040; border-radius: 50%;
              animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  p { color: #666; font-size: 14px; }
+  p { color: #aaa; font-size: 14px; text-align: center; }
 </style>
 </head>
 <body>
   <div class="spinner"></div>
-  <p>${error ? '❌ Error: ' + error : 'Conectando con MercadoLibre...'}</p>
+  <p id="msg">Conectando con MercadoLibre...</p>
   <script>
-    if ('${error}') {
-      document.querySelector('p').textContent = 'Error al conectar. Cerrando...';
+    const code  = ${JSON.stringify(code)};
+    const error = ${JSON.stringify(error)};
+    if (error) {
+      document.getElementById('msg').textContent = 'Error: ' + error + '. Cerrando...';
       setTimeout(() => window.close(), 2000);
-    } else if ('${code}') {
-      // Guardar el code en localStorage para que app.html lo levante
-      localStorage.setItem('ps_oauth_code', '${code}');
+    } else if (code) {
+      localStorage.setItem('ps_oauth_code', code);
       localStorage.setItem('ps_oauth_ts', Date.now().toString());
-      document.querySelector('p').textContent = '✅ ¡Listo! Podés cerrar esta pestaña.';
-      // Intentar cerrar esta pestaña automáticamente
+      document.getElementById('msg').textContent = '✅ ¡Autorizado! Podés cerrar esta pestaña.';
       window.close();
+    } else {
+      document.getElementById('msg').textContent = 'No se recibió código. Intentá de nuevo.';
     }
   </script>
 </body>
