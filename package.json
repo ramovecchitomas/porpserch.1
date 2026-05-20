@@ -1,0 +1,8 @@
+{
+  "name": "propsearch-ar",
+  "version": "1.0.0",
+  "description": "Servidor OAuth para PropSearch AR",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
