@@ -502,7 +502,8 @@ async function mostrarApp() {
   const cached = localStorage.getItem(K.user);
   if (cached) { renderUser(JSON.parse(cached)); return; }
   try {
-    const resp = await fetch('https://api.mercadolibre.com/users/me', {
+    const cfg = getConfig();
+    const resp = await fetch(`${cfg.serverUrl}/api/me`, {
       headers:{'Authorization':`Bearer ${localStorage.getItem(K.access)}`}
     });
     if (resp.ok) {
@@ -565,11 +566,15 @@ async function buscar(page=0) {
   document.getElementById('loading').classList.add('active');
 
   try {
-    let url=`https://api.mercadolibre.com/sites/MLA/search?category=MLA1459&state=${zona}&OPERATION=${op}&offset=${page*PER_PAGE}&limit=${PER_PAGE}&sort=date_desc`;
-    if(tipo) url+=`&PROPERTY_TYPE=${tipo}`;
-    if(kw)   url+=`&q=${encodeURIComponent(kw)}`;
+    const cfg = getConfig();
+    const params = new URLSearchParams({
+      category: 'MLA1459', state: zona, OPERATION: op,
+      offset: page*PER_PAGE, limit: PER_PAGE, sort: 'date_desc'
+    });
+    if(tipo) params.set('PROPERTY_TYPE', tipo);
+    if(kw)   params.set('q', kw);
 
-    const resp = await fetch(url, {headers:{'Authorization':`Bearer ${token}`}});
+    const resp = await fetch(`${cfg.serverUrl}/api/search?${params}`, {headers:{'Authorization':`Bearer ${token}`}});
 
     if(resp.status===401||resp.status===403){
       const ok=await intentarRefresh();
