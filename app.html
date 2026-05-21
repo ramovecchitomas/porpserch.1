@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PropSearch AR</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d0d; --surface:#161616; --surface2:#1f1f1f;
+    --border:#2a2a2a; --accent:#f0e040; --accent2:#40c8f0;
+    --text:#f0ede8; --muted:#666; --ml:#ffe900;
+    --zp:#e8174a; --ap:#2563eb; --nav:#00b386; --red:#e8174a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;}
+
+  /* SCREENS */
+  .screen{display:none;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+  .screen.active{display:flex;}
+  #screen-app{display:none;}
+
+  /* LOGO */
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,10vw,88px);letter-spacing:3px;line-height:1;text-align:center;}
+  .logo em{color:var(--accent);font-style:normal;}
+  .tagline{font-size:12px;letter-spacing:5px;text-transform:uppercase;color:var(--muted);margin-top:8px;margin-bottom:40px;text-align:center;}
+
+  /* CARD */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px 36px;width:100%;max-width:500px;display:flex;flex-direction:column;gap:20px;}
+  .card h2{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;}
+
+  /* STEPS */
+  .steps{display:flex;flex-direction:column;gap:12px;}
+  .step{display:flex;gap:12px;align-items:flex-start;}
+  .step-num{min-width:24px;height:24px;border-radius:50%;background:var(--accent);color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:2px;flex-shrink:0;}
+  .step-text{font-size:13px;line-height:1.6;}
+  .step-text a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(240,224,64,.3);}
+  .step-text code{background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;color:var(--accent2);font-family:monospace;word-break:break-all;}
+
+  /* FIELDS */
+  .field{display:flex;flex-direction:column;gap:6px;}
+  label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-weight:500;}
+  input[type="text"],input[type="date"],select{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:14px;border-radius:7px;outline:none;transition:border-color .2s;width:100%;-webkit-appearance:none;}
+  input:focus,select:focus{border-color:var(--accent);}
+  select option{background:#1a1a1a;}
+
+  /* BUTTONS */
+  .btn{border:none;padding:13px 24px;font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;border-radius:7px;cursor:pointer;transition:transform .15s,box-shadow .15s;width:100%;}
+  .btn:hover{transform:translateY(-2px);}
+  .btn:active{transform:translateY(0);}
+  .btn-primary{background:var(--accent);color:#000;}
+  .btn-primary:hover{box-shadow:0 8px 28px rgba(240,224,64,.25);}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);font-size:15px;}
+  .btn-ml{background:var(--ml);color:#000;display:flex;align-items:center;justify-content:center;gap:10px;}
+  .btn-ml:hover{box-shadow:0 8px 28px rgba(255,233,0,.3);}
+  .btn-sm-danger{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:color .2s;font-family:'DM Sans',sans-serif;}
+  .btn-sm-danger:hover{color:var(--red);}
+  .note{font-size:11px;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:14px;}
+
+  /* AUTH */
+  .auth-icon{font-size:48px;}
+  .auth-waiting{display:none;flex-direction:column;align-items:center;gap:12px;padding:12px 0;}
+  .auth-waiting.active{display:flex;}
+  .auth-waiting .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+  .auth-waiting p{font-size:13px;color:var(--muted);text-align:center;}
+
+  /* APP HEADER */
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px;}
+  .app-logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;}
+  .app-logo em{color:var(--accent);font-style:normal;}
+  .user-badge{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 5px;}
+  .user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;color:#000;font-weight:500;overflow:hidden;}
+  .user-avatar img{width:100%;height:100%;object-fit:cover;}
+  .user-name{font-size:13px;font-weight:500;}
+
+  /* SEARCH PANEL */
+  .search-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;align-items:end;}
+  .btn-search{background:var(--accent);color:#000;font-size:19px;padding:12px 16px;}
+  .btn-search:hover{box-shadow:0 8px 24px rgba(240,224,64,.3);}
+
+  /* EXTERNAL BAR */
+  .external-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 40px;border-bottom:1px solid var(--border);}
+  .ext-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+  .portal-btn{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;border:1px solid transparent;transition:all .2s;}
+  .portal-btn:hover{opacity:.7;transform:translateY(-1px);}
+  .portal-btn.zp{border-color:var(--zp);color:var(--zp);}
+  .portal-btn.ap{border-color:var(--ap);color:var(--ap);}
+  .portal-btn.nav{border-color:var(--nav);color:var(--nav);}
+  .portal-dot{width:7px;height:7px;border-radius:50%;}
+  .zp .portal-dot{background:var(--zp);}
+  .ap .portal-dot{background:var(--ap);}
+  .nav .portal-dot{background:var(--nav);}
+
+  /* MAIN */
+  main{padding:24px 40px;max-width:1400px;margin:0 auto;}
+
+  /* STATUS */
+  .status-bar{display:none;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+  .status-count{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;}
+  .status-count span{color:var(--accent);}
+  .ml-badge{background:var(--ml);color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;}
+
+  /* GRID */
+  .results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;}
+
+  /* PROP CARD */
+  .prop-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:transform .2s,border-color .2s;animation:fadeUp .4s ease both;}
+  .prop-card:hover{transform:translateY(-4px);border-color:var(--accent);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+  .prop-img{width:100%;height:185px;object-fit:cover;display:block;background:var(--surface2);}
+  .prop-img-ph{width:100%;height:185px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--border);}
+  .prop-body{padding:14px;}
+  .prop-price{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--accent);margin-bottom:4px;}
+  .prop-title{font-size:13px;color:var(--text);margin-bottom:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .prop-loc{font-size:11px;color:var(--muted);margin-bottom:9px;}
+  .prop-attrs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px;}
+  .attr-chip{background:var(--surface2);border:1px solid var(--border);padding:2px 7px;border-radius:4px;font-size:10px;color:var(--muted);}
+  .prop-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:9px;}
+  .prop-date{font-size:10px;color:var(--muted);}
+  .prop-link{color:var(--ml);font-size:11px;font-weight:500;text-decoration:none;}
+  .prop-link:hover{opacity:.7;}
+
+  /* STATES */
+  .loading{display:none;flex-direction:column;align-items:center;justify-content:center;padding:80px 0;gap:16px;}
+  .loading.active{display:flex;}
+  .spinner{width:42px;height:42px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-text{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--muted);animation:pulse 1.5s ease infinite;}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  .empty-state{display:none;flex-direction:column;align-items:center;padding:80px 0;gap:12px;text-align:center;color:var(--muted);}
+  .empty-state.active{display:flex;}
+  .empty-state .icon{font-size:50px;}
+  .empty-state .title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--text);}
+  .empty-state .sub{font-size:13px;max-width:340px;line-height:1.6;}
+  .welcome-state{display:flex;flex-direction:column;align-items:center;padding:80px 0;gap:12px;text-align:center;}
+  .welcome-state .icon{font-size:58px;}
+  .welcome-state .title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;}
+  .welcome-state .sub{font-size:14px;font-weight:300;color:var(--muted);max-width:400px;line-height:1.7;}
+  .error-box{display:none;background:rgba(232,23,74,.1);border:1px solid var(--red);border-radius:8px;padding:12px 16px;color:var(--red);font-size:13px;margin-bottom:18px;}
+  .error-box.active{display:block;}
+
+  /* PAGINATION */
+  .pagination{display:flex;justify-content:center;gap:8px;margin-top:32px;flex-wrap:wrap;}
+  .page-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;transition:all .2s;}
+  .page-btn:hover,.page-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+
+  @media(max-width:768px){
+    .app-header,.search-panel,.external-bar,main{padding-left:20px;padding-right:20px;}
+    .search-panel{grid-template-columns:1fr 1fr;}
+    .btn-search{grid-column:1/-1;}
+    .card{padding:24px 20px;}
+  }
+  @media(max-width:480px){.search-panel{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ══════ SCREEN: SETUP ══════ -->
+<div class="screen active" id="screen-setup">
+  <div class="logo">PROP<em>SEARCH</em> AR</div>
+  <div class="tagline">Buscador Inmobiliario · Argentina</div>
+
+  <div class="card">
+    <h2>Configuración inicial</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          Subí la carpeta <strong>api/</strong> a un repo de GitHub y deployala en <a href="https://vercel.com" target="_blank">vercel.com</a>. Te da una URL tipo <code>https://mi-app.vercel.app</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          En Vercel → Settings → Environment Variables agregá <code>ML_CLIENT_ID</code> y <code>ML_CLIENT_SECRET</code>.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          En el DevCenter de ML, poné como redirect URI: <code id="redirect-preview">https://tu-app.vercel.app/api/callback</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">Completá los campos de abajo. Solo lo hacés una vez.</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Client ID de MercadoLibre</label>
+      <input type="text" id="cfg-client-id" placeholder="ej: 8001144606059383" />
+    </div>
+    <div class="field">
+      <label>URL de tu proyecto en Vercel</label>
+      <input type="text" id="cfg-server-url" placeholder="https://mi-app.vercel.app" oninput="actualizarPreview()" />
+    </div>
+
+    <button class="btn btn-primary" onclick="guardarConfig()">GUARDAR Y CONTINUAR →</button>
+    <div class="note">ⓘ Todo se guarda en tu navegador. El servidor solo se usa para el login inicial.</div>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: AUTH ══════ -->
+<div class="screen" id="screen-auth">
+  <div class="logo" style="font-size:clamp(36px,7vw,64px)">PROP<em>SEARCH</em> AR</div>
+
+  <div class="card" style="align-items:center;text-align:center;">
+    <div class="auth-icon">🔐</div>
+    <h2>Conectar cuenta</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.6;">
+      Conectá tu cuenta de MercadoLibre. Solo se pide permiso de lectura. El token se renueva automáticamente.
+    </p>
+
+    <button class="btn btn-ml" id="btn-login" onclick="iniciarLogin()">
+      <span style="font-size:18px">🛒</span> CONECTAR CON MERCADOLIBRE
+    </button>
+
+    <!-- Spinner mientras espera el callback -->
+    <div class="auth-waiting" id="auth-waiting">
+      <div class="spinner"></div>
+      <p>Esperando que autorices en MercadoLibre...<br><small>Se abrió una nueva pestaña. Volvé acá después de autorizar.</small></p>
+      <button class="btn btn-secondary" style="font-size:14px;padding:10px;" onclick="cancelarEspera()">Cancelar</button>
+    </div>
+
+    <button class="btn btn-secondary" onclick="mostrarScreen('setup')" style="margin-top:-8px;font-size:14px;">
+      ← Cambiar configuración
+    </button>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: APP ══════ -->
+<div id="screen-app">
+  <header class="app-header">
+    <div class="app-logo">PROP<em>SEARCH</em> AR</div>
+    <div class="user-badge">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">...</span>
+      <button class="btn-sm-danger" onclick="cerrarSesion()">Salir</button>
+    </div>
+  </header>
+
+  <div class="search-panel">
+    <div class="field">
+      <label>Zona</label>
+      <select id="sel-zona">
+        <option value="TUxBQkJVRU5PU19BSVJFUw">Buenos Aires (CABA)</option>
+        <option value="TUxBUEdSQU5fQlVFTk9T">Gran Buenos Aires</option>
+        <option value="TUxBUENPUkRPQkE">Córdoba</option>
+        <option value="TUxBUFJPU0FSSU8">Rosario</option>
+        <option value="TUxBUE1FTkRPWkE">Mendoza</option>
+        <option value="TUxBUFNBTFRB">Salta</option>
+        <option value="TUxBUFRVQ1VNQU4">Tucumán</option>
+        <option value="TUxBUE1BUkRFTFBMQVRB">Mar del Plata</option>
+        <option value="TUxBUExBUExBVEE">La Plata</option>
+        <option value="TUxBUE5FVVFVRUw">Neuquén</option>
+        <option value="TUxBUEJBUklMT0NIRQ">Bariloche</option>
+        <option value="TUxBUFNBTlJBRkFFTA">San Rafael</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Operación</label>
+      <select id="sel-op">
+        <option value="242059">Venta</option>
+        <option value="242060">Alquiler</option>
+        <option value="242179">Alquiler Temporal</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="sel-tipo">
+        <option value="">Todos</option>
+        <option value="242183">Departamento</option>
+        <option value="242180">Casa</option>
+        <option value="242182">PH</option>
+        <option value="242184">Local</option>
+        <option value="242186">Oficina</option>
+        <option value="242185">Terreno</option>
+        <option value="242188">Cochera</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Publicado desde</label>
+      <input type="date" id="sel-fecha" />
+    </div>
+    <div class="field">
+      <label>Palabras clave</label>
+      <input type="text" id="sel-keywords" placeholder="ej: jardín, cochera..." />
+    </div>
+    <button class="btn btn-search" onclick="buscar()">BUSCAR</button>
+  </div>
+
+  <div class="external-bar" id="external-bar">
+    <span class="ext-label">Ver también en</span>
+    <a class="portal-btn zp" id="link-zp" href="#" target="_blank" rel="noopener"><span class="portal-dot"></span> Zonaprop</a>
+    <a class="portal-btn ap" id="link-ap" href="#" target="_blank" rel="noopener"><span class="portal-dot"></span> Argenprop</a>
+    <a class="portal-btn nav" id="link-nav" href="#" target="_blank" rel="noopener"><span class="portal-dot"></span> Navent</a>
+    <span style="font-size:11px;color:var(--muted);font-style:italic;">↗ Abre con tus filtros</span>
+  </div>
+
+  <main>
+    <div class="error-box" id="error-box"></div>
+
+    <div class="welcome-state" id="welcome">
+      <div class="icon">🏠</div>
+      <div class="title">Buscá tu próxima propiedad</div>
+      <div class="sub">Usá los filtros de arriba. Resultados en tiempo real de MercadoLibre.</div>
+    </div>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">BUSCANDO PROPIEDADES...</div>
+    </div>
+    <div class="empty-state" id="empty">
+      <div class="icon">🔍</div>
+      <div class="title">Sin resultados</div>
+      <div class="sub">Probá cambiando zona, tipo o fecha.</div>
+    </div>
+
+    <div class="status-bar" id="status-bar">
+      <div class="status-count" id="result-count"></div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;">
+        Fuente: <span class="ml-badge">MERCADOLIBRE</span> · Tiempo real
+      </div>
+    </div>
+    <div class="results-grid" id="results-grid"></div>
+    <div class="pagination" id="pagination"></div>
+  </main>
+</div>
+
+<script>
+// ═══════════ STORAGE KEYS ═══════════
+const K = {
+  config:'ps_config', access:'ps_access_token',
+  refresh:'ps_refresh_token', expires:'ps_expires_at',
+  user:'ps_user', oauth_code:'ps_oauth_code', oauth_ts:'ps_oauth_ts'
+};
+const PER_PAGE = 48;
+let currentPage = 0;
+let pollInterval = null;
+
+// ═══════════ INIT ═══════════
+window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('sel-fecha').value = new Date().toISOString().split('T')[0];
+
+  const cfg = getConfig();
+  if (cfg) {
+    document.getElementById('cfg-client-id').value  = cfg.clientId  || '';
+    document.getElementById('cfg-server-url').value = cfg.serverUrl || '';
+    actualizarPreview();
+  }
+
+  if (!cfg) { mostrarScreen('setup'); return; }
+
+  const token  = localStorage.getItem(K.access);
+  const expiry = parseInt(localStorage.getItem(K.expires) || '0');
+
+  if (!token) { mostrarScreen('auth'); return; }
+
+  if (Date.now() >= expiry) {
+    const ok = await intentarRefresh();
+    if (!ok) { mostrarScreen('auth'); return; }
+  }
+
+  await mostrarApp();
+});
+
+// ═══════════ CONFIG ═══════════
+function getConfig() {
+  const r = localStorage.getItem(K.config);
+  return r ? JSON.parse(r) : null;
+}
+
+function actualizarPreview() {
+  const url = (document.getElementById('cfg-server-url').value || '').trim().replace(/\/$/,'');
+  document.getElementById('redirect-preview').textContent = url
+    ? `${url}/api/callback`
+    : 'https://tu-app.vercel.app/api/callback';
+}
+
+function guardarConfig() {
+  const clientId  = document.getElementById('cfg-client-id').value.trim();
+  const serverUrl = document.getElementById('cfg-server-url').value.trim().replace(/\/$/,'');
+  if (!clientId)  { alert('Ingresá tu Client ID.'); return; }
+  if (!serverUrl) { alert('Ingresá la URL de Vercel.'); return; }
+  if (!serverUrl.startsWith('https://')) { alert('La URL debe empezar con https://'); return; }
+  localStorage.setItem(K.config, JSON.stringify({ clientId, serverUrl }));
+  mostrarScreen('auth');
+}
+
+// ═══════════ SCREENS ═══════════
+function mostrarScreen(name) {
+  document.getElementById('screen-setup').style.display = name==='setup' ? 'flex'  : 'none';
+  document.getElementById('screen-auth').style.display  = name==='auth'  ? 'flex'  : 'none';
+  document.getElementById('screen-app').style.display   = name==='app'   ? 'block' : 'none';
+}
+
+// ═══════════ OAUTH ═══════════
+function iniciarLogin() {
+  const cfg = getConfig();
+  if (!cfg) { mostrarScreen('setup'); return; }
+
+  // Limpiar código anterior
+  localStorage.removeItem(K.oauth_code);
+  localStorage.removeItem(K.oauth_ts);
+
+  const redirectUri = `${cfg.serverUrl}/api/callback`;
+  const authUrl = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${cfg.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+  // Abrir en nueva pestaña
+  window.open(authUrl, '_blank');
+
+  // Mostrar spinner de espera
+  document.getElementById('btn-login').style.display = 'none';
+  document.getElementById('auth-waiting').classList.add('active');
+
+  // Polling: esperar que el callback guarde el code en localStorage
+  pollInterval = setInterval(async () => {
+    const code = localStorage.getItem(K.oauth_code);
+    const ts   = parseInt(localStorage.getItem(K.oauth_ts) || '0');
+    // El código tiene que ser reciente (menos de 5 min)
+    if (code && (Date.now() - ts) < 5 * 60 * 1000) {
+      clearInterval(pollInterval);
+      localStorage.removeItem(K.oauth_code);
+      localStorage.removeItem(K.oauth_ts);
+      await canjearCodigo(code);
+    }
+  }, 1000);
+
+  // Timeout de 5 minutos
+  setTimeout(() => {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      cancelarEspera();
+      alert('Tiempo de espera agotado. Intentá de nuevo.');
+    }
+  }, 5 * 60 * 1000);
+}
+
+function cancelarEspera() {
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  document.getElementById('btn-login').style.display = '';
+  document.getElementById('auth-waiting').classList.remove('active');
+}
+
+async function canjearCodigo(code) {
+  const cfg = getConfig();
+  if (!cfg) { mostrarScreen('setup'); return; }
+
+  try {
+    const redirectUri = `${cfg.serverUrl}/api/callback`;
+    const resp = await fetch(`${cfg.serverUrl}/api/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
+    });
+    if (!resp.ok) throw new Error(`Error ${resp.status}`);
+    const data = await resp.json();
+    guardarTokens(data);
+    await mostrarApp();
+  } catch(err) {
+    cancelarEspera();
+    alert(`No se pudo completar el login: ${err.message}`);
+  }
+}
+
+function guardarTokens(data) {
+  localStorage.setItem(K.access,   data.access_token);
+  localStorage.setItem(K.refresh,  data.refresh_token || '');
+  localStorage.setItem(K.expires,  (Date.now() + (data.expires_in||21600)*1000).toString());
+}
+
+// ═══════════ REFRESH ═══════════
+async function intentarRefresh() {
+  const cfg = getConfig();
+  const rt  = localStorage.getItem(K.refresh);
+  if (!cfg || !rt) return false;
+  try {
+    const resp = await fetch(`${cfg.serverUrl}/api/refresh`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ refresh_token: rt }),
+    });
+    if (!resp.ok) return false;
+    guardarTokens(await resp.json());
+    return true;
+  } catch { return false; }
+}
+
+// Renovar token cada 5 min si está por vencer
+setInterval(async () => {
+  const exp = parseInt(localStorage.getItem(K.expires)||'0');
+  if (Date.now() >= exp || (exp - Date.now()) < 30*60*1000) {
+    const ok = await intentarRefresh();
+    if (!ok && document.getElementById('screen-app').style.display !== 'none') cerrarSesion();
+  }
+}, 5 * 60 * 1000);
+
+// ═══════════ MOSTRAR APP ═══════════
+async function mostrarApp() {
+  mostrarScreen('app');
+  const cached = localStorage.getItem(K.user);
+  if (cached) { renderUser(JSON.parse(cached)); return; }
+  try {
+    const resp = await fetch('https://api.mercadolibre.com/users/me', {
+      headers:{'Authorization':`Bearer ${localStorage.getItem(K.access)}`}
+    });
+    if (resp.ok) {
+      const user = await resp.json();
+      localStorage.setItem(K.user, JSON.stringify(user));
+      renderUser(user);
+    }
+  } catch {}
+}
+
+function renderUser(u) {
+  document.getElementById('user-name').textContent = u.nickname || u.first_name || 'Usuario';
+  const av = document.getElementById('user-avatar');
+  if (u.thumbnail?.picture_url) av.innerHTML=`<img src="${u.thumbnail.picture_url}" alt="">`;
+  else av.textContent = (u.nickname||'U')[0].toUpperCase();
+}
+
+function cerrarSesion() {
+  [K.access,K.refresh,K.expires,K.user].forEach(k=>localStorage.removeItem(k));
+  mostrarScreen('auth');
+}
+
+// ═══════════ LINKS EXTERNOS ═══════════
+const zonaMap={'TUxBQkJVRU5PU19BSVJFUw':{zp:'capital-federal',ap:'capital-federal',nav:'capital-federal'},'TUxBUEdSQU5fQlVFTk9T':{zp:'gran-buenos-aires',ap:'gran-buenos-aires',nav:'gran-buenos-aires'},'TUxBUENPUkRPQkE':{zp:'cordoba',ap:'cordoba',nav:'cordoba'},'TUxBUFJPU0FSSU8':{zp:'rosario',ap:'rosario',nav:'rosario'},'TUxBUE1FTkRPWkE':{zp:'mendoza',ap:'mendoza',nav:'mendoza'},'TUxBUFNBTFRB':{zp:'salta',ap:'salta',nav:'salta'},'TUxBUFRVQ1VNQU4':{zp:'tucuman',ap:'tucuman',nav:'tucuman'},'TUxBUE1BUkRFTFBMQVRB':{zp:'mar-del-plata',ap:'mar-del-plata',nav:'mar-del-plata'},'TUxBUExBUExBVEE':{zp:'la-plata',ap:'la-plata',nav:'la-plata'},'TUxBUE5FVVFVRUw':{zp:'neuquen',ap:'neuquen',nav:'neuquen'},'TUxBUEJBUklMT0NIRQ':{zp:'bariloche',ap:'bariloche',nav:'bariloche'},'TUxBUFNBTlJBRkFFTA':{zp:'san-rafael',ap:'san-rafael',nav:'san-rafael'}};
+const opMap={'242059':{zp:'venta',ap:'venta',nav:'venta'},'242060':{zp:'alquiler',ap:'alquiler',nav:'alquiler'},'242179':{zp:'alquiler-temporario',ap:'alquiler',nav:'alquiler'}};
+const tipoMap={'242183':{zp:'departamento',ap:'departamento',nav:'departamento'},'242180':{zp:'casas',ap:'casa',nav:'casa'},'242182':{zp:'ph',ap:'ph',nav:'ph'},'242184':{zp:'local-comercial',ap:'local-comercial',nav:'local'},'242186':{zp:'oficina',ap:'oficina',nav:'oficina'},'242185':{zp:'terreno',ap:'terreno',nav:'terreno'},'242188':{zp:'cochera',ap:'cochera',nav:'cochera'}};
+
+function updateExternalLinks() {
+  const zona=document.getElementById('sel-zona').value, op=document.getElementById('sel-op').value, tipo=document.getElementById('sel-tipo').value;
+  const z=zonaMap[zona]||{}, o=opMap[op]||{}, t=tipoMap[tipo];
+  document.getElementById('link-zp').href=`https://www.zonaprop.com.ar/${z.zp}-${o.zp}${t?'/'+t.zp:''}.html`;
+  document.getElementById('link-ap').href=`https://www.argenprop.com/${t?t.ap+'/':''}${o.ap}-en-${z.ap}`;
+  document.getElementById('link-nav').href=`https://www.navent.com/propiedades/${o.nav}/${z.nav}${t?'/'+t.nav:''}`;
+  document.getElementById('external-bar').style.display='flex';
+}
+
+// ═══════════ BÚSQUEDA ═══════════
+async function buscar(page=0) {
+  let token = localStorage.getItem(K.access);
+  if (!token) { cerrarSesion(); return; }
+
+  const expiry = parseInt(localStorage.getItem(K.expires)||'0');
+  if (Date.now() >= expiry) {
+    const ok = await intentarRefresh();
+    if (!ok) { cerrarSesion(); return; }
+    token = localStorage.getItem(K.access);
+  }
+
+  const zona=document.getElementById('sel-zona').value, op=document.getElementById('sel-op').value,
+        tipo=document.getElementById('sel-tipo').value, fecha=document.getElementById('sel-fecha').value,
+        kw=document.getElementById('sel-keywords').value.trim();
+
+  currentPage=page; updateExternalLinks();
+  document.getElementById('welcome').style.display='none';
+  document.getElementById('results-grid').innerHTML='';
+  document.getElementById('pagination').innerHTML='';
+  document.getElementById('status-bar').style.display='none';
+  document.getElementById('empty').classList.remove('active');
+  document.getElementById('error-box').classList.remove('active');
+  document.getElementById('loading').classList.add('active');
+
+  try {
+    let url=`https://api.mercadolibre.com/sites/MLA/search?category=MLA1459&state=${zona}&OPERATION=${op}&offset=${page*PER_PAGE}&limit=${PER_PAGE}&sort=date_desc`;
+    if(tipo) url+=`&PROPERTY_TYPE=${tipo}`;
+    if(kw)   url+=`&q=${encodeURIComponent(kw)}`;
+
+    const resp = await fetch(url, {headers:{'Authorization':`Bearer ${token}`}});
+
+    if(resp.status===401||resp.status===403){
+      const ok=await intentarRefresh();
+      if(!ok){cerrarSesion();return;}
+      return buscar(page);
+    }
+    if(!resp.ok) throw new Error(`Error ${resp.status}`);
+
+    const data=await resp.json();
+    let items=data.results||[];
+    if(fecha){const d=new Date(fecha);d.setHours(0,0,0,0);items=items.filter(i=>!i.date_created||new Date(i.date_created)>=d);}
+
+    document.getElementById('loading').classList.remove('active');
+    if(!items.length){document.getElementById('empty').classList.add('active');return;}
+
+    document.getElementById('status-bar').style.display='flex';
+    document.getElementById('result-count').innerHTML=`<span>${(data.paging?.total||0).toLocaleString('es-AR')}</span> propiedades encontradas`;
+    document.getElementById('results-grid').innerHTML=items.map((item,i)=>renderCard(item,i*35)).join('');
+    renderPaginacion(data.paging?.total||0,page);
+    document.getElementById('status-bar').scrollIntoView({behavior:'smooth',block:'start'});
+  } catch(err){
+    document.getElementById('loading').classList.remove('active');
+    const eb=document.getElementById('error-box');
+    eb.textContent=`Error: ${err.message}`;
+    eb.classList.add('active');
+  }
+}
+
+// ═══════════ RENDER CARD ═══════════
+const getAttr=(attrs,id)=>attrs?.find(x=>x.id===id)?.value_name||null;
+function renderCard(item,delay){
+  const chips=[];
+  const amb=getAttr(item.attributes,'ROOMS'),dorm=getAttr(item.attributes,'BEDROOMS'),
+        ban=getAttr(item.attributes,'BATHROOMS'),sup=getAttr(item.attributes,'TOTAL_AREA');
+  if(amb)chips.push(`🛋 ${amb} amb.`);if(dorm)chips.push(`🛏 ${dorm} dorm.`);
+  if(ban)chips.push(`🚿 ${ban} baños`);if(sup)chips.push(`📐 ${sup}`);
+  const img=item.thumbnail?.replace('I.jpg','O.jpg');
+  const imgEl=img?`<img class="prop-img" src="${img}" alt="" loading="lazy" onerror="this.outerHTML='<div class=prop-img-ph>🏠</div>'">`:`<div class="prop-img-ph">🏠</div>`;
+  const loc=item.location?[item.location.city?.name,item.location.state?.name].filter(Boolean).join(', '):'';
+  const price=item.price?`${item.currency_id==='USD'?'USD':'$'} ${new Intl.NumberFormat('es-AR').format(item.price)}`:'Consultar';
+  const date=item.date_created?new Date(item.date_created).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+  return `<div class="prop-card" style="animation-delay:${delay}ms">${imgEl}<div class="prop-body"><div class="prop-price">${price}</div><div class="prop-title">${item.title}</div>${loc?`<div class="prop-loc">📍 ${loc}</div>`:''} ${chips.length?`<div class="prop-attrs">${chips.map(c=>`<span class="attr-chip">${c}</span>`).join('')}</div>`:''}<div class="prop-footer"><span class="prop-date">${date?'📅 '+date:''}</span><a class="prop-link" href="${item.permalink}" target="_blank" rel="noopener">Ver en ML ↗</a></div></div></div>`;
+}
+
+// ═══════════ PAGINACIÓN ═══════════
+function renderPaginacion(total,current){
+  const pages=Math.min(Math.ceil(total/PER_PAGE),20);
+  if(pages<=1)return;
+  let html='';
+  if(current>0)html+=`<button class="page-btn" onclick="buscar(${current-1})">← Ant.</button>`;
+  const s=Math.max(0,current-2),e=Math.min(pages-1,current+2);
+  for(let i=s;i<=e;i++)html+=`<button class="page-btn ${i===current?'active':''}" onclick="buscar(${i})">${i+1}</button>`;
+  if(current<pages-1)html+=`<button class="page-btn" onclick="buscar(${current+1})">Sig. →</button>`;
+  document.getElementById('pagination').innerHTML=html;
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('screen-app').style.display!=='none')buscar();});
+</script>
+</body>
+</html>
